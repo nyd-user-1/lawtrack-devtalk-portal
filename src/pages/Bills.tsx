@@ -52,41 +52,57 @@ const Bills = () => {
 
   const fetchBills = async () => {
     try {
-      // First get all bills
+      console.log("Fetching bills...");
+      
+      // Get first 50 bills for better performance
       const { data: billsData, error: billsError } = await supabase
         .from("Bills")
-        .select("*");
+        .select("*")
+        .limit(50)
+        .order("status_date", { ascending: false });
 
-      if (billsError) throw billsError;
+      if (billsError) {
+        console.error("Bills error:", billsError);
+        throw billsError;
+      }
 
-      // Then get primary sponsors for each bill
-      const billsWithSponsors = await Promise.all(
-        (billsData || []).map(async (bill) => {
-          const { data: sponsorData } = await supabase
-            .from("Sponsors")
-            .select("people_id")
-            .eq("bill_id", bill.bill_id)
-            .eq("position", 1)
-            .limit(1);
+      console.log("Bills fetched:", billsData?.length);
 
-          let primarySponsor = null;
-          if (sponsorData?.[0]) {
-            const { data: personData } = await supabase
-              .from("People")
-              .select("*")
-              .eq("people_id", sponsorData[0].people_id)
-              .limit(1);
-            
-            primarySponsor = personData?.[0] || null;
-          }
+      if (!billsData || billsData.length === 0) {
+        setBills([]);
+        return;
+      }
 
-          return {
-            ...bill,
-            primary_sponsor: primarySponsor
-          };
-        })
-      );
+      // Get all primary sponsors in one query
+      const billIds = billsData.map(bill => bill.bill_id);
+      const { data: sponsorsData } = await supabase
+        .from("Sponsors")
+        .select("bill_id, people_id, position")
+        .in("bill_id", billIds)
+        .eq("position", 1);
 
+      console.log("Sponsors fetched:", sponsorsData?.length);
+
+      // Get all people data for those sponsors
+      const peopleIds = sponsorsData?.map(sponsor => sponsor.people_id) || [];
+      const { data: peopleData } = await supabase
+        .from("People")
+        .select("*")
+        .in("people_id", peopleIds);
+
+      console.log("People fetched:", peopleData?.length);
+
+      // Create maps for efficient lookup
+      const sponsorMap = new Map(sponsorsData?.map(sponsor => [sponsor.bill_id, sponsor.people_id]) || []);
+      const peopleMap = new Map(peopleData?.map(person => [person.people_id, person]) || []);
+
+      // Combine the data
+      const billsWithSponsors = billsData.map(bill => ({
+        ...bill,
+        primary_sponsor: sponsorMap.has(bill.bill_id) ? peopleMap.get(sponsorMap.get(bill.bill_id)) : null
+      }));
+
+      console.log("Bills with sponsors:", billsWithSponsors.length);
       setBills(billsWithSponsors);
     } catch (error) {
       console.error("Error fetching bills:", error);
