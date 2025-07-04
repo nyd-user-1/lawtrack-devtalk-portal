@@ -13,6 +13,8 @@ interface BillFiltersProps {
   setCommitteeFilter: (committee: string) => void;
   monthFilter: string;
   setMonthFilter: (month: string) => void;
+  sponsorFilter: string;
+  setSponsorFilter: (sponsor: string) => void;
   onClearFilters: () => void;
 }
 
@@ -26,10 +28,13 @@ export const BillFilters = ({
   setCommitteeFilter,
   monthFilter,
   setMonthFilter,
+  sponsorFilter,
+  setSponsorFilter,
   onClearFilters,
 }: BillFiltersProps) => {
   const uniqueStatuses = [...new Set(bills.map(bill => bill.status_desc).filter(Boolean))];
   const uniqueCommittees = [...new Set(bills.map(bill => bill.committee).filter(Boolean))];
+  const uniqueSponsors = [...new Set(bills.map(bill => bill.primary_sponsor?.name).filter(Boolean))].sort();
   const uniqueMonths = [...new Set(bills.map(bill => {
     if (!bill.status_date) return null;
     const billDate = new Date(bill.status_date);
@@ -37,7 +42,7 @@ export const BillFilters = ({
   }).filter(Boolean))].sort().reverse();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
       <Input
         placeholder="Search by bill number or title..."
         value={searchTerm}
@@ -64,6 +69,18 @@ export const BillFilters = ({
           <SelectItem value="all">All Committees</SelectItem>
           {uniqueCommittees.map(committee => (
             <SelectItem key={committee} value={committee}>{committee}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
+        <SelectTrigger>
+          <SelectValue placeholder="All Sponsors" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Sponsors</SelectItem>
+          {uniqueSponsors.map(sponsor => (
+            <SelectItem key={sponsor} value={sponsor}>{sponsor}</SelectItem>
           ))}
         </SelectContent>
       </Select>

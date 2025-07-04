@@ -25,7 +25,7 @@ export const useBills = () => {
       const { data: billsData, error: billsError } = await supabase
         .from("Bills")
         .select("*")
-        .range(currentOffset, currentOffset + 299)
+        .range(currentOffset, currentOffset + 499)
         .order("status_date", { ascending: false });
 
       if (billsError) {
@@ -41,7 +41,7 @@ export const useBills = () => {
         return;
       }
 
-      setHasMore(billsData.length === 300);
+      setHasMore(billsData.length === 500);
       
       const billIds = billsData.map(bill => bill.bill_id);
       const { data: sponsorsData } = await supabase
@@ -79,10 +79,10 @@ export const useBills = () => {
       
       if (isLoadMore) {
         setBills(prev => [...prev, ...billsWithSponsors]);
-        setOffset(currentOffset + 300);
+        setOffset(currentOffset + 500);
       } else {
         setBills(billsWithSponsors);
-        setOffset(300);
+        setOffset(500);
       }
     } catch (error) {
       console.error("Error fetching bills:", error);

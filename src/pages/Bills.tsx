@@ -16,11 +16,12 @@ const Bills = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [committeeFilter, setCommitteeFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
+  const [sponsorFilter, setSponsorFilter] = useState("");
   const [selectedBill, setSelectedBill] = useState<BillWithSponsor | null>(null);
 
   useEffect(() => {
     filterBills();
-  }, [bills, searchTerm, statusFilter, committeeFilter, monthFilter]);
+  }, [bills, searchTerm, statusFilter, committeeFilter, monthFilter, sponsorFilter]);
 
 
   const filterBills = () => {
@@ -40,6 +41,10 @@ const Bills = () => {
 
     if (committeeFilter && committeeFilter !== "all") {
       filtered = filtered.filter(bill => bill.committee === committeeFilter);
+    }
+
+    if (sponsorFilter && sponsorFilter !== "all") {
+      filtered = filtered.filter(bill => bill.primary_sponsor?.name === sponsorFilter);
     }
 
     if (monthFilter && monthFilter !== "all") {
@@ -96,11 +101,14 @@ const Bills = () => {
           setCommitteeFilter={setCommitteeFilter}
           monthFilter={monthFilter}
           setMonthFilter={setMonthFilter}
+          sponsorFilter={sponsorFilter}
+          setSponsorFilter={setSponsorFilter}
           onClearFilters={() => {
             setSearchTerm("");
             setStatusFilter("");
             setCommitteeFilter("");
             setMonthFilter("");
+            setSponsorFilter("");
           }}
         />
 

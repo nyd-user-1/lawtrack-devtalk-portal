@@ -57,12 +57,6 @@ export const BillDetailDialog = ({
                   {selectedBill?.title || "No title available"}
                 </p>
               </div>
-              <div>
-                <h4 className="font-semibold mb-2">Description</h4>
-                <p className="text-sm text-muted-foreground">
-                  {selectedBill?.description || "No description available"}
-                </p>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-semibold mb-2">Status</h4>
