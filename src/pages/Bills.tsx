@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tables } from "@/integrations/supabase/types";
 
 type Bill = Tables<"Bills">;
@@ -33,14 +34,19 @@ const Bills = () => {
   const [bills, setBills] = useState<BillWithSponsor[]>([]);
   const [filteredBills, setFilteredBills] = useState<BillWithSponsor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [committeeFilter, setCommitteeFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState("");
   const [selectedBill, setSelectedBill] = useState<BillWithSponsor | null>(null);
   const [billSponsors, setBillSponsors] = useState<SponsorWithPerson[]>([]);
   const [billHistory, setBillHistory] = useState<History[]>([]);
   const [billRollcalls, setBillRollcalls] = useState<Rollcall[]>([]);
   const [selectedRollcallVotes, setSelectedRollcallVotes] = useState<VoteWithPerson[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     fetchBills();
@@ -48,17 +54,25 @@ const Bills = () => {
 
   useEffect(() => {
     filterBills();
-  }, [bills, searchTerm, statusFilter]);
+  }, [bills, searchTerm, statusFilter, committeeFilter, monthFilter]);
 
-  const fetchBills = async () => {
+  const fetchBills = async (isLoadMore = false) => {
     try {
-      console.log("Fetching bills...");
+      if (isLoadMore) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setOffset(0);
+      }
       
-      // Get a diverse set of bills with different statuses for better filtering
+      console.log("Fetching bills...", isLoadMore ? "Loading more" : "Initial load");
+      
+      // Get 300 bills for initial load or additional bills for load more
+      const currentOffset = isLoadMore ? offset : 0;
       const { data: billsData, error: billsError } = await supabase
         .from("Bills")
         .select("*")
-        .limit(100)
+        .range(currentOffset, currentOffset + 299)
         .order("bill_id", { ascending: false });
 
       if (billsError) {
@@ -69,10 +83,14 @@ const Bills = () => {
       console.log("Bills fetched:", billsData?.length);
 
       if (!billsData || billsData.length === 0) {
-        setBills([]);
+        if (!isLoadMore) setBills([]);
+        setHasMore(false);
         return;
       }
 
+      // Check if we have more data
+      setHasMore(billsData.length === 300);
+      
       // Get all primary sponsors in one query
       const billIds = billsData.map(bill => bill.bill_id);
       const { data: sponsorsData } = await supabase
@@ -103,11 +121,28 @@ const Bills = () => {
       }));
 
       console.log("Bills with sponsors:", billsWithSponsors.length);
-      setBills(billsWithSponsors);
+      
+      if (isLoadMore) {
+        setBills(prev => [...prev, ...billsWithSponsors]);
+        setOffset(currentOffset + 300);
+      } else {
+        setBills(billsWithSponsors);
+        setOffset(300);
+      }
     } catch (error) {
       console.error("Error fetching bills:", error);
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  const loadMoreBills = () => {
+    if (!loadingMore && hasMore) {
+      fetchBills(true);
     }
   };
 
@@ -126,36 +161,53 @@ const Bills = () => {
       filtered = filtered.filter(bill => bill.status_desc === statusFilter);
     }
 
+    if (committeeFilter) {
+      filtered = filtered.filter(bill => bill.committee === committeeFilter);
+    }
+
+    if (monthFilter) {
+      filtered = filtered.filter(bill => {
+        if (!bill.status_date) return false;
+        const billDate = new Date(bill.status_date);
+        const billMonth = billDate.toISOString().slice(0, 7); // YYYY-MM format
+        return billMonth === monthFilter;
+      });
+    }
+
     setFilteredBills(filtered);
   };
 
   const openBillDetail = async (bill: BillWithSponsor) => {
     setSelectedBill(bill);
     setDetailLoading(true);
+    setSelectedRollcallVotes([]); // Reset votes when opening new bill
 
     try {
-      // Fetch sponsors
+      // Fetch all sponsors for this bill
       const { data: sponsorsData } = await supabase
         .from("Sponsors")
         .select("*")
-        .eq("bill_id", bill.bill_id);
+        .eq("bill_id", bill.bill_id)
+        .order("position");
 
-      const sponsorsWithPeople = await Promise.all(
-        (sponsorsData || []).map(async (sponsor) => {
-          const { data: personData } = await supabase
-            .from("People")
-            .select("*")
-            .eq("people_id", sponsor.people_id)
-            .limit(1);
+      if (sponsorsData && sponsorsData.length > 0) {
+        const sponsorPeopleIds = sponsorsData.map(sponsor => sponsor.people_id);
+        const { data: peopleData } = await supabase
+          .from("People")
+          .select("*")
+          .in("people_id", sponsorPeopleIds);
 
-          return {
-            ...sponsor,
-            person: personData?.[0] || null
-          };
-        })
-      );
+        const peopleMap = new Map(peopleData?.map(person => [person.people_id, person]) || []);
+        
+        const sponsorsWithPeople = sponsorsData.map(sponsor => ({
+          ...sponsor,
+          person: peopleMap.get(sponsor.people_id)
+        })).filter(s => s.person);
 
-      setBillSponsors(sponsorsWithPeople.filter(s => s.person));
+        setBillSponsors(sponsorsWithPeople);
+      } else {
+        setBillSponsors([]);
+      }
 
       // Fetch history
       const { data: historyData } = await supabase
@@ -180,6 +232,7 @@ const Bills = () => {
       setDetailLoading(false);
     }
   };
+
 
   const fetchVotes = async (rollCallId: number) => {
     try {
@@ -210,6 +263,12 @@ const Bills = () => {
   };
 
   const uniqueStatuses = [...new Set(bills.map(bill => bill.status_desc).filter(Boolean))];
+  const uniqueCommittees = [...new Set(bills.map(bill => bill.committee).filter(Boolean))];
+  const uniqueMonths = [...new Set(bills.map(bill => {
+    if (!bill.status_date) return null;
+    const billDate = new Date(bill.status_date);
+    return billDate.toISOString().slice(0, 7); // YYYY-MM format
+  }).filter(Boolean))].sort().reverse();
 
   if (loading) {
     return (
@@ -237,23 +296,65 @@ const Bills = () => {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Legislative Bills</h1>
         
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <Input
             placeholder="Search by bill number or title..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="md:w-80"
           />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 px-3 rounded-md border border-input bg-background"
+          
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Statuses</SelectItem>
+              {uniqueStatuses.map(status => (
+                <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={committeeFilter} onValueChange={setCommitteeFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Committees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Committees</SelectItem>
+              {uniqueCommittees.map(committee => (
+                <SelectItem key={committee} value={committee}>{committee}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Months" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Months</SelectItem>
+              {uniqueMonths.map(month => (
+                <SelectItem key={month} value={month}>
+                  {new Date(month + '-01').toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long' 
+                  })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("");
+              setCommitteeFilter("");
+              setMonthFilter("");
+            }}
           >
-            <option value="">All Statuses</option>
-            {uniqueStatuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
+            Clear Filters
+          </Button>
         </div>
 
         <div className="bills-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -286,11 +387,24 @@ const Bills = () => {
           ))}
         </div>
 
+        {hasMore && (
+          <div className="flex justify-center mt-8">
+            <Button 
+              onClick={loadMoreBills} 
+              disabled={loadingMore}
+              variant="outline"
+              size="lg"
+            >
+              {loadingMore ? "Loading..." : "Load More Bills"}
+            </Button>
+          </div>
+        )}
+
         <Dialog open={!!selectedBill} onOpenChange={() => setSelectedBill(null)}>
           <DialogContent className="bill-detail-modal max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {selectedBill?.bill_number} - {selectedBill?.title}
+                {selectedBill?.bill_number}
               </DialogTitle>
             </DialogHeader>
 
