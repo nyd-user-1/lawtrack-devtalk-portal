@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -8,7 +9,9 @@ const Index = () => {
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">LegTalk</h1>
-          <Button variant="ghost">Menu</Button>
+          <Link to="/bills">
+            <Button variant="ghost">View Bills</Button>
+          </Link>
         </div>
       </header>
 
