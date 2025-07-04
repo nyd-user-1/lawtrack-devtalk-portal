@@ -54,12 +54,12 @@ const Bills = () => {
     try {
       console.log("Fetching bills...");
       
-      // Get first 50 bills for better performance
+      // Get a diverse set of bills with different statuses for better filtering
       const { data: billsData, error: billsError } = await supabase
         .from("Bills")
         .select("*")
-        .limit(50)
-        .order("status_date", { ascending: false });
+        .limit(100)
+        .order("bill_id", { ascending: false });
 
       if (billsError) {
         console.error("Bills error:", billsError);
