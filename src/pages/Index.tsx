@@ -1,10 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-
 const Index = () => {
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -29,9 +27,7 @@ const Index = () => {
             <p className="text-lg text-muted-foreground">
               The platform is designed to be as simple as possible, providing a clean interface with essential tracking features and member interactions.
             </p>
-            <p className="text-lg text-muted-foreground">
-              Track bills, monitor committee activities, and stay updated on legislative progress with real-time notifications and comprehensive bill analysis.
-            </p>
+            <p className="text-lg text-muted-foreground">This is a test. This is only a test.</p>
           </div>
         </div>
 
@@ -157,8 +153,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
