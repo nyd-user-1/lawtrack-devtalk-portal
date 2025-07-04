@@ -91,31 +91,47 @@ export type Database = {
           state_link?: string | null
           url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_documents_bill"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "Bills"
+            referencedColumns: ["bill_id"]
+          },
+        ]
       }
       History: {
         Row: {
           action: string | null
           bill_id: number
           chamber: string | null
-          date: string | null
+          date: string
           sequence: number
         }
         Insert: {
           action?: string | null
           bill_id: number
           chamber?: string | null
-          date?: string | null
+          date: string
           sequence: number
         }
         Update: {
           action?: string | null
           bill_id?: number
           chamber?: string | null
-          date?: string | null
+          date?: string
           sequence?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_history_bill"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "Bills"
+            referencedColumns: ["bill_id"]
+          },
+        ]
       }
       People: {
         Row: {
@@ -217,7 +233,15 @@ export type Database = {
           total?: number | null
           yea?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_rollcall_bill"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "Bills"
+            referencedColumns: ["bill_id"]
+          },
+        ]
       }
       Sponsors: {
         Row: {
@@ -235,7 +259,15 @@ export type Database = {
           people_id?: number
           position?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_sponsors_bill"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "Bills"
+            referencedColumns: ["bill_id"]
+          },
+        ]
       }
       Votes: {
         Row: {
@@ -256,7 +288,22 @@ export type Database = {
           vote?: number | null
           vote_desc?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_votes_people"
+            columns: ["people_id"]
+            isOneToOne: false
+            referencedRelation: "People"
+            referencedColumns: ["people_id"]
+          },
+          {
+            foreignKeyName: "fk_votes_rollcall"
+            columns: ["roll_call_id"]
+            isOneToOne: false
+            referencedRelation: "Rollcalls"
+            referencedColumns: ["roll_call_id"]
+          },
+        ]
       }
     }
     Views: {

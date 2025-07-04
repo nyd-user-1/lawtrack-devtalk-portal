@@ -1,158 +1,27 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tables } from "@/integrations/supabase/types";
-
-type Bill = Tables<"Bills">;
-type Person = Tables<"People">;
-type Sponsor = Tables<"Sponsors">;
-type History = Tables<"History">;
-type Rollcall = Tables<"Rollcalls">;
-type Vote = Tables<"Votes">;
-
-interface BillWithSponsor extends Bill {
-  primary_sponsor?: Person;
-}
-
-interface SponsorWithPerson extends Sponsor {
-  person: Person;
-}
-
-interface VoteWithPerson extends Vote {
-  person: Person;
-}
+import { BillWithSponsor } from "@/types/bills";
+import { useBills, useBillDetails } from "@/hooks/useBills";
+import { BillCard } from "@/components/bills/BillCard";
+import { BillFilters } from "@/components/bills/BillFilters";
+import { BillDetailDialog } from "@/components/bills/BillDetailDialog";
 
 const Bills = () => {
-  const [bills, setBills] = useState<BillWithSponsor[]>([]);
-  const [filteredBills, setFilteredBills] = useState<BillWithSponsor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const { bills, filteredBills, setFilteredBills, loading, loadingMore, hasMore, loadMoreBills } = useBills();
+  const { billSponsors, billHistory, billRollcalls, selectedRollcallVotes, detailLoading, fetchBillDetails, fetchVotes } = useBillDetails();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [committeeFilter, setCommitteeFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
   const [selectedBill, setSelectedBill] = useState<BillWithSponsor | null>(null);
-  const [billSponsors, setBillSponsors] = useState<SponsorWithPerson[]>([]);
-  const [billHistory, setBillHistory] = useState<History[]>([]);
-  const [billRollcalls, setBillRollcalls] = useState<Rollcall[]>([]);
-  const [selectedRollcallVotes, setSelectedRollcallVotes] = useState<VoteWithPerson[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-
-  useEffect(() => {
-    fetchBills();
-  }, []);
 
   useEffect(() => {
     filterBills();
   }, [bills, searchTerm, statusFilter, committeeFilter, monthFilter]);
 
-  const fetchBills = async (isLoadMore = false) => {
-    try {
-      if (isLoadMore) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-        setOffset(0);
-      }
-      
-      console.log("Fetching bills...", isLoadMore ? "Loading more" : "Initial load");
-      
-      // Get 300 bills for initial load or additional bills for load more - using a more diverse range
-      const currentOffset = isLoadMore ? offset : 0;
-      const { data: billsData, error: billsError } = await supabase
-        .from("Bills")
-        .select("*")
-        .range(currentOffset, currentOffset + 299)
-        .order("status_date", { ascending: false }); // Order by status_date to get more recent/active bills
-
-      if (billsError) {
-        console.error("Bills error:", billsError);
-        throw billsError;
-      }
-
-      console.log("Bills fetched:", billsData?.length);
-
-      if (!billsData || billsData.length === 0) {
-        if (!isLoadMore) setBills([]);
-        setHasMore(false);
-        return;
-      }
-
-      // Check if we have more data
-      setHasMore(billsData.length === 300);
-      
-      // Get all sponsors for these bills (not just primary sponsors)
-      const billIds = billsData.map(bill => bill.bill_id);
-      const { data: sponsorsData } = await supabase
-        .from("Sponsors")
-        .select("bill_id, people_id, position")
-        .in("bill_id", billIds)
-        .order("position");
-
-      console.log("Sponsors fetched:", sponsorsData?.length);
-
-      // Get all people data for those sponsors
-      const peopleIds = sponsorsData?.map(sponsor => sponsor.people_id) || [];
-      const { data: peopleData } = await supabase
-        .from("People")
-        .select("*")
-        .in("people_id", peopleIds);
-
-      console.log("People fetched:", peopleData?.length);
-
-      // Create maps for efficient lookup - get primary sponsor (position 1)
-      const primarySponsorMap = new Map();
-      sponsorsData?.forEach(sponsor => {
-        if (sponsor.position === 1) {
-          primarySponsorMap.set(sponsor.bill_id, sponsor.people_id);
-        }
-      });
-      
-      const peopleMap = new Map(peopleData?.map(person => [person.people_id, person]) || []);
-
-      // Combine the data
-      const billsWithSponsors = billsData.map(bill => ({
-        ...bill,
-        primary_sponsor: primarySponsorMap.has(bill.bill_id) ? peopleMap.get(primarySponsorMap.get(bill.bill_id)) : null
-      }));
-
-      console.log("Bills with sponsors:", billsWithSponsors.length);
-      console.log("Bills with actual sponsors:", billsWithSponsors.filter(b => b.primary_sponsor).length);
-      
-      if (isLoadMore) {
-        setBills(prev => [...prev, ...billsWithSponsors]);
-        setOffset(currentOffset + 300);
-      } else {
-        setBills(billsWithSponsors);
-        setOffset(300);
-      }
-    } catch (error) {
-      console.error("Error fetching bills:", error);
-    } finally {
-      if (isLoadMore) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-      }
-    }
-  };
-
-  const loadMoreBills = () => {
-    if (!loadingMore && hasMore) {
-      fetchBills(true);
-    }
-  };
 
   const filterBills = () => {
     let filtered = bills;
@@ -187,108 +56,9 @@ const Bills = () => {
 
   const openBillDetail = async (bill: BillWithSponsor) => {
     setSelectedBill(bill);
-    setDetailLoading(true);
-    setSelectedRollcallVotes([]); // Reset votes when opening new bill
-
-    try {
-      // Fetch all sponsors for this bill
-      const { data: sponsorsData } = await supabase
-        .from("Sponsors")
-        .select("*")
-        .eq("bill_id", bill.bill_id)
-        .order("position");
-
-      if (sponsorsData && sponsorsData.length > 0) {
-        const sponsorPeopleIds = sponsorsData.map(sponsor => sponsor.people_id);
-        const { data: peopleData } = await supabase
-          .from("People")
-          .select("*")
-          .in("people_id", sponsorPeopleIds);
-
-        const peopleMap = new Map(peopleData?.map(person => [person.people_id, person]) || []);
-        
-        const sponsorsWithPeople = sponsorsData.map(sponsor => ({
-          ...sponsor,
-          person: peopleMap.get(sponsor.people_id)
-        })).filter(s => s.person);
-
-        setBillSponsors(sponsorsWithPeople);
-      } else {
-        setBillSponsors([]);
-      }
-
-      // Fetch history
-      const { data: historyData } = await supabase
-        .from("History")
-        .select("*")
-        .eq("bill_id", bill.bill_id)
-        .order("sequence");
-
-      setBillHistory(historyData || []);
-
-      // Fetch rollcalls
-      const { data: rollcallsData } = await supabase
-        .from("Rollcalls")
-        .select("*")
-        .eq("bill_id", bill.bill_id)
-        .order("date", { ascending: false });
-
-      setBillRollcalls(rollcallsData || []);
-    } catch (error) {
-      console.error("Error fetching bill details:", error);
-    } finally {
-      setDetailLoading(false);
-    }
+    await fetchBillDetails(bill.bill_id);
   };
 
-  const fetchVotes = async (rollCallId: number) => {
-    try {
-      const { data: votesData } = await supabase
-        .from("Votes")
-        .select("*")
-        .eq("roll_call_id", rollCallId);
-
-      const votesWithPeople = await Promise.all(
-        (votesData || []).map(async (vote) => {
-          const { data: personData } = await supabase
-            .from("People")
-            .select("*")
-            .eq("people_id", vote.people_id)
-            .limit(1);
-
-          return {
-            ...vote,
-            person: personData?.[0] || null
-          };
-        })
-      );
-
-      setSelectedRollcallVotes(votesWithPeople.filter(v => v.person));
-    } catch (error) {
-      console.error("Error fetching votes:", error);
-    }
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'passed':
-        return 'default';
-      case 'pending':
-        return 'secondary';
-      case 'failed':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  };
-
-  const uniqueStatuses = [...new Set(bills.map(bill => bill.status_desc).filter(Boolean))];
-  const uniqueCommittees = [...new Set(bills.map(bill => bill.committee).filter(Boolean))];
-  const uniqueMonths = [...new Set(bills.map(bill => {
-    if (!bill.status_date) return null;
-    const billDate = new Date(bill.status_date);
-    return billDate.toISOString().slice(0, 7); // YYYY-MM format
-  }).filter(Boolean))].sort().reverse();
 
   if (loading) {
     return (
@@ -316,119 +86,27 @@ const Bills = () => {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Legislative Bills</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <Input
-            placeholder="Search by bill number or title..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {uniqueStatuses.map(status => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={committeeFilter} onValueChange={setCommitteeFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Committees" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Committees</SelectItem>
-              {uniqueCommittees.map(committee => (
-                <SelectItem key={committee} value={committee}>{committee}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={monthFilter} onValueChange={setMonthFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Months" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {uniqueMonths.map(month => (
-                <SelectItem key={month} value={month}>
-                  {new Date(month + '-01').toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long' 
-                  })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("");
-              setCommitteeFilter("");
-              setMonthFilter("");
-            }}
-          >
-            Clear Filters
-          </Button>
-        </div>
+        <BillFilters
+          bills={bills}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          committeeFilter={committeeFilter}
+          setCommitteeFilter={setCommitteeFilter}
+          monthFilter={monthFilter}
+          setMonthFilter={setMonthFilter}
+          onClearFilters={() => {
+            setSearchTerm("");
+            setStatusFilter("");
+            setCommitteeFilter("");
+            setMonthFilter("");
+          }}
+        />
 
         <div className="bills-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredBills.map((bill) => (
-            <Card
-              key={bill.bill_id}
-              className="bill-card cursor-pointer hover:shadow-lg transition-shadow bg-white"
-              onClick={() => openBillDetail(bill)}
-            >
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {/* Header with title and status */}
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-bold text-xl text-gray-900 mb-2">{bill.bill_number}</h3>
-                      <p className="text-lg font-medium text-gray-600">{bill.title}</p>
-                    </div>
-                    <Badge 
-                      variant={getStatusBadgeVariant(bill.status_desc || 'pending')}
-                      className="ml-4 shrink-0"
-                    >
-                      {bill.status_desc || 'Pending'}
-                    </Badge>
-                  </div>
-                  
-                  {/* Description */}
-                  <p className="text-sm text-gray-600 line-clamp-3">
-                    {bill.description || "A comprehensive bill to address various legislative matters."}
-                  </p>
-                  
-                  {/* Sponsor and Committee Info */}
-                  <div className="space-y-2 text-sm">
-                    {bill.primary_sponsor && (
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        <span className="font-medium">Rep. {bill.primary_sponsor.name}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                      <span className="text-gray-600">{bill.status_date}</span>
-                    </div>
-                    
-                    {bill.committee && (
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        <span className="text-gray-600">{bill.committee}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <BillCard key={bill.bill_id} bill={bill} onClick={openBillDetail} />
           ))}
         </div>
 
@@ -445,161 +123,16 @@ const Bills = () => {
           </div>
         )}
 
-        <Dialog open={!!selectedBill} onOpenChange={() => setSelectedBill(null)}>
-          <DialogContent className="bill-detail-modal max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedBill?.bill_number}
-              </DialogTitle>
-            </DialogHeader>
-
-            {detailLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-20" />
-                <Skeleton className="h-40" />
-              </div>
-            ) : (
-              <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="sponsors">Sponsors</TabsTrigger>
-                  <TabsTrigger value="history">History</TabsTrigger>
-                  <TabsTrigger value="votes">Votes</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Description</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedBill?.description || "No description available"}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">Status</h4>
-                      <Badge>{selectedBill?.status_desc}</Badge>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Last Action</h4>
-                      <p className="text-sm">{selectedBill?.last_action}</p>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="sponsors">
-                  <div className="sponsor-grid space-y-3">
-                    {billSponsors.length > 0 ? (
-                      billSponsors.map((sponsor, index) => (
-                        <div key={index} className="flex justify-between items-center p-3 border rounded">
-                          <div>
-                            <p className="font-medium">{sponsor.person.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {sponsor.person.party} - {sponsor.person.district}
-                            </p>
-                          </div>
-                          <Badge variant="outline">
-                            {sponsor.position === 1 ? "Primary" : "Co-Sponsor"}
-                          </Badge>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground">No sponsors found for this bill.</p>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="history">
-                  <div className="history-timeline space-y-3">
-                    {billHistory.map((item, index) => (
-                      <div key={index} className="border-l-2 border-muted pl-4 pb-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium">{item.action}</p>
-                            <p className="text-sm text-muted-foreground">{item.chamber}</p>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{item.date}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="votes">
-                  <div className="space-y-4">
-                    {billRollcalls.map((rollcall) => (
-                      <div key={rollcall.roll_call_id} className="border rounded p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-medium">{rollcall.description}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {rollcall.chamber} - {rollcall.date}
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fetchVotes(rollcall.roll_call_id)}
-                          >
-                            View Votes
-                          </Button>
-                        </div>
-                        <div className="vote-summary grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <p className="text-lg font-bold text-green-600">{rollcall.yea}</p>
-                            <p className="text-sm">Yea</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold text-red-600">{rollcall.nay}</p>
-                            <p className="text-sm">Nay</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold">{rollcall.total}</p>
-                            <p className="text-sm">Total</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {selectedRollcallVotes.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="font-semibold mb-3">Individual Votes</h4>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Legislator</TableHead>
-                              <TableHead>Party</TableHead>
-                              <TableHead>District</TableHead>
-                              <TableHead>Vote</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {selectedRollcallVotes.map((vote, index) => (
-                              <TableRow key={index}>
-                                <TableCell>{vote.person.name}</TableCell>
-                                <TableCell>{vote.person.party}</TableCell>
-                                <TableCell>{vote.person.district}</TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={
-                                      vote.vote_desc === "Yea" ? "default" :
-                                      vote.vote_desc === "Nay" ? "destructive" : "secondary"
-                                    }
-                                  >
-                                    {vote.vote_desc}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            )}
-          </DialogContent>
-        </Dialog>
+        <BillDetailDialog
+          selectedBill={selectedBill}
+          onClose={() => setSelectedBill(null)}
+          billSponsors={billSponsors}
+          billHistory={billHistory}
+          billRollcalls={billRollcalls}
+          selectedRollcallVotes={selectedRollcallVotes}
+          detailLoading={detailLoading}
+          onFetchVotes={fetchVotes}
+        />
       </div>
     </div>
   );
