@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -67,13 +68,13 @@ const Bills = () => {
       
       console.log("Fetching bills...", isLoadMore ? "Loading more" : "Initial load");
       
-      // Get 300 bills for initial load or additional bills for load more
+      // Get 300 bills for initial load or additional bills for load more - using a more diverse range
       const currentOffset = isLoadMore ? offset : 0;
       const { data: billsData, error: billsError } = await supabase
         .from("Bills")
         .select("*")
         .range(currentOffset, currentOffset + 299)
-        .order("bill_id", { ascending: false });
+        .order("status_date", { ascending: false }); // Order by status_date to get more recent/active bills
 
       if (billsError) {
         console.error("Bills error:", billsError);
@@ -91,13 +92,13 @@ const Bills = () => {
       // Check if we have more data
       setHasMore(billsData.length === 300);
       
-      // Get all primary sponsors in one query
+      // Get all sponsors for these bills (not just primary sponsors)
       const billIds = billsData.map(bill => bill.bill_id);
       const { data: sponsorsData } = await supabase
         .from("Sponsors")
         .select("bill_id, people_id, position")
         .in("bill_id", billIds)
-        .eq("position", 1);
+        .order("position");
 
       console.log("Sponsors fetched:", sponsorsData?.length);
 
@@ -110,17 +111,24 @@ const Bills = () => {
 
       console.log("People fetched:", peopleData?.length);
 
-      // Create maps for efficient lookup
-      const sponsorMap = new Map(sponsorsData?.map(sponsor => [sponsor.bill_id, sponsor.people_id]) || []);
+      // Create maps for efficient lookup - get primary sponsor (position 1)
+      const primarySponsorMap = new Map();
+      sponsorsData?.forEach(sponsor => {
+        if (sponsor.position === 1) {
+          primarySponsorMap.set(sponsor.bill_id, sponsor.people_id);
+        }
+      });
+      
       const peopleMap = new Map(peopleData?.map(person => [person.people_id, person]) || []);
 
       // Combine the data
       const billsWithSponsors = billsData.map(bill => ({
         ...bill,
-        primary_sponsor: sponsorMap.has(bill.bill_id) ? peopleMap.get(sponsorMap.get(bill.bill_id)) : null
+        primary_sponsor: primarySponsorMap.has(bill.bill_id) ? peopleMap.get(primarySponsorMap.get(bill.bill_id)) : null
       }));
 
       console.log("Bills with sponsors:", billsWithSponsors.length);
+      console.log("Bills with actual sponsors:", billsWithSponsors.filter(b => b.primary_sponsor).length);
       
       if (isLoadMore) {
         setBills(prev => [...prev, ...billsWithSponsors]);
@@ -233,7 +241,6 @@ const Bills = () => {
     }
   };
 
-
   const fetchVotes = async (rollCallId: number) => {
     try {
       const { data: votesData } = await supabase
@@ -259,6 +266,19 @@ const Bills = () => {
       setSelectedRollcallVotes(votesWithPeople.filter(v => v.person));
     } catch (error) {
       console.error("Error fetching votes:", error);
+    }
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'passed':
+        return 'default';
+      case 'pending':
+        return 'secondary';
+      case 'failed':
+        return 'destructive';
+      default:
+        return 'secondary';
     }
   };
 
@@ -361,26 +381,51 @@ const Bills = () => {
           {filteredBills.map((bill) => (
             <Card
               key={bill.bill_id}
-              className="bill-card cursor-pointer hover:shadow-lg transition-shadow"
+              className="bill-card cursor-pointer hover:shadow-lg transition-shadow bg-white"
               onClick={() => openBillDetail(bill)}
             >
               <CardContent className="p-6">
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Header with title and status */}
                   <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-lg">{bill.bill_number}</h3>
-                    <Badge variant="secondary">{bill.status_desc}</Badge>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-xl text-gray-900 mb-2">{bill.title}</h3>
+                      <p className="text-lg font-medium text-gray-600">{bill.bill_number}</p>
+                    </div>
+                    <Badge 
+                      variant={getStatusBadgeVariant(bill.status_desc || 'pending')}
+                      className="ml-4 shrink-0"
+                    >
+                      {bill.status_desc || 'Pending'}
+                    </Badge>
                   </div>
-                  <h4 className="text-sm text-muted-foreground line-clamp-2">
-                    {bill.title}
-                  </h4>
-                  {bill.primary_sponsor && (
-                    <p className="text-sm">
-                      <span className="font-medium">Sponsor:</span> {bill.primary_sponsor.name}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Updated: {bill.status_date}
+                  
+                  {/* Description */}
+                  <p className="text-sm text-gray-600 line-clamp-3">
+                    {bill.description || "A comprehensive bill to address various legislative matters."}
                   </p>
+                  
+                  {/* Sponsor and Committee Info */}
+                  <div className="space-y-2 text-sm">
+                    {bill.primary_sponsor && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span className="font-medium">Rep. {bill.primary_sponsor.name}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                      <span className="text-gray-600">{bill.status_date}</span>
+                    </div>
+                    
+                    {bill.committee && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        <span className="text-gray-600">{bill.committee}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -443,19 +488,23 @@ const Bills = () => {
 
                 <TabsContent value="sponsors">
                   <div className="sponsor-grid space-y-3">
-                    {billSponsors.map((sponsor, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 border rounded">
-                        <div>
-                          <p className="font-medium">{sponsor.person.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {sponsor.person.party} - {sponsor.person.district}
-                          </p>
+                    {billSponsors.length > 0 ? (
+                      billSponsors.map((sponsor, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 border rounded">
+                          <div>
+                            <p className="font-medium">{sponsor.person.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {sponsor.person.party} - {sponsor.person.district}
+                            </p>
+                          </div>
+                          <Badge variant="outline">
+                            {sponsor.position === 1 ? "Primary" : "Co-Sponsor"}
+                          </Badge>
                         </div>
-                        <Badge variant="outline">
-                          {sponsor.position === 1 ? "Primary" : "Co-Sponsor"}
-                        </Badge>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No sponsors found for this bill.</p>
+                    )}
                   </div>
                 </TabsContent>
 
