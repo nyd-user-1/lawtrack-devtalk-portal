@@ -389,8 +389,8 @@ const Bills = () => {
                   {/* Header with title and status */}
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="font-bold text-xl text-gray-900 mb-2">{bill.title}</h3>
-                      <p className="text-lg font-medium text-gray-600">{bill.bill_number}</p>
+                      <h3 className="font-bold text-xl text-gray-900 mb-2">{bill.bill_number}</h3>
+                      <p className="text-lg font-medium text-gray-600">{bill.title}</p>
                     </div>
                     <Badge 
                       variant={getStatusBadgeVariant(bill.status_desc || 'pending')}
