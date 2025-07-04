@@ -33,7 +33,7 @@ const Index = () => {
 
         {/* Bills Section */}
         <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-8">Current Bills</h2>
+          <h2 className="text-3xl font-bold mb-8">Trending</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="bg-card border border-border rounded-lg p-6 min-h-[200px] flex items-center justify-center">
               <CardContent className="text-center">
