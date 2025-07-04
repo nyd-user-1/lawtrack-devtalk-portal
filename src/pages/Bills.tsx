@@ -157,15 +157,15 @@ const Bills = () => {
       );
     }
 
-    if (statusFilter) {
+    if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter(bill => bill.status_desc === statusFilter);
     }
 
-    if (committeeFilter) {
+    if (committeeFilter && committeeFilter !== "all") {
       filtered = filtered.filter(bill => bill.committee === committeeFilter);
     }
 
-    if (monthFilter) {
+    if (monthFilter && monthFilter !== "all") {
       filtered = filtered.filter(bill => {
         if (!bill.status_date) return false;
         const billDate = new Date(bill.status_date);
@@ -308,7 +308,7 @@ const Bills = () => {
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               {uniqueStatuses.map(status => (
                 <SelectItem key={status} value={status}>{status}</SelectItem>
               ))}
@@ -320,7 +320,7 @@ const Bills = () => {
               <SelectValue placeholder="All Committees" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Committees</SelectItem>
+              <SelectItem value="all">All Committees</SelectItem>
               {uniqueCommittees.map(committee => (
                 <SelectItem key={committee} value={committee}>{committee}</SelectItem>
               ))}
@@ -332,7 +332,7 @@ const Bills = () => {
               <SelectValue placeholder="All Months" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Months</SelectItem>
+              <SelectItem value="all">All Months</SelectItem>
               {uniqueMonths.map(month => (
                 <SelectItem key={month} value={month}>
                   {new Date(month + '-01').toLocaleDateString('en-US', { 
