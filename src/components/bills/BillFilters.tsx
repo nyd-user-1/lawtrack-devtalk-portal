@@ -41,14 +41,14 @@ export const BillFilters = ({
         onChange={(e) => setSearchTerm(e.target.value)}
       />
       
-      <Select value={statusFilter} onValueChange={setStatusFilter}>
+      <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
         <SelectTrigger>
-          <SelectValue placeholder="All Statuses" />
+          <SelectValue placeholder="All Sponsors" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Statuses</SelectItem>
-          {uniqueStatuses.map(status => (
-            <SelectItem key={status} value={status}>{status}</SelectItem>
+          <SelectItem value="all">All Sponsors</SelectItem>
+          {uniqueSponsors.map(sponsor => (
+            <SelectItem key={sponsor} value={sponsor}>{sponsor}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -65,14 +65,14 @@ export const BillFilters = ({
         </SelectContent>
       </Select>
 
-      <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
+      <Select value={statusFilter} onValueChange={setStatusFilter}>
         <SelectTrigger>
-          <SelectValue placeholder="All Sponsors" />
+          <SelectValue placeholder="All Statuses" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Sponsors</SelectItem>
-          {uniqueSponsors.map(sponsor => (
-            <SelectItem key={sponsor} value={sponsor}>{sponsor}</SelectItem>
+          <SelectItem value="all">All Statuses</SelectItem>
+          {uniqueStatuses.map(status => (
+            <SelectItem key={status} value={status}>{status}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -81,7 +81,7 @@ export const BillFilters = ({
         className="bg-black text-white hover:bg-gray-800"
         onClick={onClearFilters}
       >
-        Clear Filters
+        Clear
       </Button>
     </div>
   );

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { BillWithSponsor, SponsorWithPerson, History, Rollcall, VoteWithPerson } from "@/types/bills";
 import { User, FileText } from "lucide-react";
+import { useState } from "react";
 
 interface BillDetailDialogProps {
   selectedBill: BillWithSponsor | null;
@@ -28,6 +29,22 @@ export const BillDetailDialog = ({
   detailLoading,
   onFetchVotes,
 }: BillDetailDialogProps) => {
+  const [activeRollcallId, setActiveRollcallId] = useState<number | null>(null);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const handleViewVotes = (rollCallId: number) => {
+    setActiveRollcallId(rollCallId);
+    onFetchVotes(rollCallId);
+  };
   return (
     <Dialog open={!!selectedBill} onOpenChange={onClose}>
       <DialogContent className="bill-detail-modal max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -74,12 +91,12 @@ export const BillDetailDialog = ({
                 {billSponsors.length > 0 && (
                   <Button variant="outline" size="sm">
                     <User className="w-4 h-4 mr-2" />
-                    Sponsor Profile
+                    Sponsor
                   </Button>
                 )}
                 <Button variant="outline" size="sm">
                   <FileText className="w-4 h-4 mr-2" />
-                  Bill Text
+                  Text
                 </Button>
               </div>
             </TabsContent>
@@ -88,7 +105,7 @@ export const BillDetailDialog = ({
               <div className="sponsor-grid space-y-3">
                 {billSponsors.length > 0 ? (
                   billSponsors.map((sponsor, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 border rounded">
+                    <div key={index} className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 transition-colors cursor-pointer">
                       <div>
                         <p className="font-medium">{sponsor.person.name}</p>
                         <p className="text-sm text-muted-foreground">
@@ -107,15 +124,16 @@ export const BillDetailDialog = ({
             </TabsContent>
 
             <TabsContent value="history">
-              <div className="history-timeline space-y-3">
+              <div className="history-timeline space-y-6">
                 {billHistory.map((item, index) => (
-                  <div key={index} className="border-l-2 border-muted pl-4 pb-4">
+                  <div key={index} className="relative border-l-2 border-gray-200 pl-6 pb-4">
+                    <div className="absolute -left-2 top-0 w-3 h-3 bg-gray-400 rounded-full"></div>
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-medium">{item.action}</p>
                         <p className="text-sm text-muted-foreground">{item.chamber}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground">{item.date}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(item.date)}</span>
                     </div>
                   </div>
                 ))}
@@ -130,13 +148,13 @@ export const BillDetailDialog = ({
                       <div>
                         <h4 className="font-medium">{rollcall.description}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {rollcall.chamber} - {rollcall.date}
+                          {rollcall.chamber} - {formatDate(rollcall.date || '')}
                         </p>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onFetchVotes(rollcall.roll_call_id)}
+                        onClick={() => handleViewVotes(rollcall.roll_call_id)}
                       >
                         View Votes
                       </Button>
@@ -155,43 +173,44 @@ export const BillDetailDialog = ({
                         <p className="text-sm">Total</p>
                       </div>
                     </div>
+
+                    {/* Individual votes table for this specific rollcall */}
+                    {activeRollcallId === rollcall.roll_call_id && selectedRollcallVotes.length > 0 && (
+                      <div className="mt-4 pt-4 border-t">
+                        <h4 className="font-semibold mb-3">Individual Votes</h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Legislator</TableHead>
+                              <TableHead>Party</TableHead>
+                              <TableHead>District</TableHead>
+                              <TableHead>Vote</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {selectedRollcallVotes.map((vote, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{vote.person.name}</TableCell>
+                                <TableCell>{vote.person.party}</TableCell>
+                                <TableCell>{vote.person.district}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      vote.vote_desc === "Yea" ? "default" :
+                                      vote.vote_desc === "Nay" ? "destructive" : "secondary"
+                                    }
+                                  >
+                                    {vote.vote_desc}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
                   </div>
                 ))}
-
-                {selectedRollcallVotes.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-3">Individual Votes</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Legislator</TableHead>
-                          <TableHead>Party</TableHead>
-                          <TableHead>District</TableHead>
-                          <TableHead>Vote</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedRollcallVotes.map((vote, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{vote.person.name}</TableCell>
-                            <TableCell>{vote.person.party}</TableCell>
-                            <TableCell>{vote.person.district}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  vote.vote_desc === "Yea" ? "default" :
-                                  vote.vote_desc === "Nay" ? "destructive" : "secondary"
-                                }
-                              >
-                                {vote.vote_desc}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
               </div>
             </TabsContent>
           </Tabs>
