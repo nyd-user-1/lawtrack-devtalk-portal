@@ -15,13 +15,12 @@ const Bills = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [committeeFilter, setCommitteeFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
   const [sponsorFilter, setSponsorFilter] = useState("");
   const [selectedBill, setSelectedBill] = useState<BillWithSponsor | null>(null);
 
   useEffect(() => {
     filterBills();
-  }, [bills, searchTerm, statusFilter, committeeFilter, monthFilter, sponsorFilter]);
+  }, [bills, searchTerm, statusFilter, committeeFilter, sponsorFilter]);
 
 
   const filterBills = () => {
@@ -47,15 +46,6 @@ const Bills = () => {
       filtered = filtered.filter(bill => 
         bill.primary_sponsor?.name?.toLowerCase().trim() === sponsorFilter.toLowerCase().trim()
       );
-    }
-
-    if (monthFilter && monthFilter !== "all") {
-      filtered = filtered.filter(bill => {
-        if (!bill.status_date) return false;
-        const billDate = new Date(bill.status_date);
-        const billMonth = billDate.toISOString().slice(0, 7); // YYYY-MM format
-        return billMonth === monthFilter;
-      });
     }
 
     setFilteredBills(filtered);
@@ -91,7 +81,7 @@ const Bills = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Legislative Bills</h1>
+        <h1 className="text-3xl font-bold mb-8">Bills</h1>
         
         <BillFilters
           bills={bills}
@@ -101,15 +91,12 @@ const Bills = () => {
           setStatusFilter={setStatusFilter}
           committeeFilter={committeeFilter}
           setCommitteeFilter={setCommitteeFilter}
-          monthFilter={monthFilter}
-          setMonthFilter={setMonthFilter}
           sponsorFilter={sponsorFilter}
           setSponsorFilter={setSponsorFilter}
           onClearFilters={() => {
             setSearchTerm("");
             setStatusFilter("");
             setCommitteeFilter("");
-            setMonthFilter("");
             setSponsorFilter("");
           }}
         />

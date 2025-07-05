@@ -11,8 +11,6 @@ interface BillFiltersProps {
   setStatusFilter: (status: string) => void;
   committeeFilter: string;
   setCommitteeFilter: (committee: string) => void;
-  monthFilter: string;
-  setMonthFilter: (month: string) => void;
   sponsorFilter: string;
   setSponsorFilter: (sponsor: string) => void;
   onClearFilters: () => void;
@@ -26,8 +24,6 @@ export const BillFilters = ({
   setStatusFilter,
   committeeFilter,
   setCommitteeFilter,
-  monthFilter,
-  setMonthFilter,
   sponsorFilter,
   setSponsorFilter,
   onClearFilters,
@@ -35,15 +31,11 @@ export const BillFilters = ({
   const uniqueStatuses = [...new Set(bills.map(bill => bill.status_desc).filter(Boolean))];
   const uniqueCommittees = [...new Set(bills.map(bill => bill.committee).filter(Boolean))];
   const uniqueSponsors = [...new Set(bills.map(bill => bill.primary_sponsor?.name).filter(Boolean))].sort();
-  const uniqueMonths = [...new Set(bills.map(bill => {
-    if (!bill.status_date) return null;
-    const billDate = new Date(bill.status_date);
-    return billDate.toISOString().slice(0, 7); // YYYY-MM format
-  }).filter(Boolean))].sort().reverse();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
       <Input
+        className="lg:col-span-2"
         placeholder="Search by bill number or title..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
@@ -85,25 +77,8 @@ export const BillFilters = ({
         </SelectContent>
       </Select>
 
-      <Select value={monthFilter} onValueChange={setMonthFilter}>
-        <SelectTrigger>
-          <SelectValue placeholder="All Months" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Months</SelectItem>
-          {uniqueMonths.map(month => (
-            <SelectItem key={month} value={month}>
-              {new Date(month + '-01').toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long' 
-              })}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       <Button 
-        variant="outline" 
+        className="bg-black text-white hover:bg-gray-800"
         onClick={onClearFilters}
       >
         Clear Filters
