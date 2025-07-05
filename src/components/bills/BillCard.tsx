@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BillWithSponsor } from "@/types/bills";
-import { User, FileText, MapPin, Building } from "lucide-react";
+import { User, FileText, MapPin, Building, Calendar } from "lucide-react";
 
 interface BillCardProps {
   bill: BillWithSponsor;
@@ -58,8 +58,8 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
             {bill.primary_sponsor && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <Building className="w-3 h-3 text-blue-500" />
-                  <span className="text-xs text-blue-500">{getChamber(bill.bill_number || '')}</span>
+                  <Building className="w-3 h-3 text-gray-500" />
+                  <span className="text-xs text-gray-500">{getChamber(bill.bill_number || '')}</span>
                 </div>
                 <User className="w-3 h-3 text-gray-500" />
                 <span className="font-medium">{bill.primary_sponsor.name}</span>
@@ -68,13 +68,13 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
             
             {bill.committee && (
               <div className="flex items-center gap-2">
-                <FileText className="w-3 h-3 text-green-500" />
+                <FileText className="w-3 h-3 text-gray-500" />
                 <span className="text-gray-600">{bill.committee}</span>
               </div>
             )}
             
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+              <Calendar className="w-3 h-3 text-gray-500" />
               <span className="text-gray-600">
                 {bill.status_date ? new Date(bill.status_date).toLocaleDateString('en-US', {
                   month: '2-digit',
@@ -86,7 +86,7 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
 
             {bill.last_action && (
               <div className="flex items-center gap-2">
-                <MapPin className="w-3 h-3 text-purple-500" />
+                <MapPin className="w-3 h-3 text-gray-500" />
                 <span className="text-gray-600 text-xs">{bill.last_action}</span>
               </div>
             )}
