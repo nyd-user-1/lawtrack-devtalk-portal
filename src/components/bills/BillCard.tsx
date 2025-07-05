@@ -32,7 +32,6 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <h3 className="font-bold text-xl text-gray-900 mb-2">{bill.bill_number}</h3>
-              <p className="text-lg font-medium text-gray-600">{bill.title}</p>
             </div>
             <Badge 
               variant={getStatusBadgeVariant(bill.status_desc || 'pending')}
@@ -44,10 +43,10 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
           
           {/* Description */}
           <p className="text-sm text-gray-600 line-clamp-3">
-            {bill.description || "A comprehensive bill to address various legislative matters."}
+            {bill.title || "A comprehensive bill to address various legislative matters."}
           </p>
           
-          {/* Sponsor and Committee Info */}
+          {/* Sponsor, Committee, and Date Info */}
           <div className="space-y-2 text-sm">
             {bill.primary_sponsor && (
               <div className="flex items-center gap-2">
@@ -56,17 +55,23 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
               </div>
             )}
             
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-              <span className="text-gray-600">{bill.status_date}</span>
-            </div>
-            
             {bill.committee && (
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
                 <span className="text-gray-600">{bill.committee}</span>
               </div>
             )}
+            
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+              <span className="text-gray-600">
+                {bill.status_date ? new Date(bill.status_date).toLocaleDateString('en-US', {
+                  month: '2-digit',
+                  day: '2-digit', 
+                  year: 'numeric'
+                }) : 'No date'}
+              </span>
+            </div>
           </div>
         </div>
       </CardContent>
