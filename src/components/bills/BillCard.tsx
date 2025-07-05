@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BillWithSponsor } from "@/types/bills";
+import { User, FileText, MapPin, Building } from "lucide-react";
 
 interface BillCardProps {
   bill: BillWithSponsor;
@@ -18,6 +19,12 @@ const getStatusBadgeVariant = (status: string) => {
     default:
       return 'secondary';
   }
+};
+
+const getChamber = (billNumber: string) => {
+  if (!billNumber) return '';
+  const prefix = billNumber.charAt(0).toUpperCase();
+  return prefix === 'S' ? 'Senate' : prefix === 'A' ? 'Assembly' : '';
 };
 
 export const BillCard = ({ bill, onClick }: BillCardProps) => {
@@ -46,24 +53,28 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
             {bill.title || "A comprehensive bill to address various legislative matters."}
           </p>
           
-          {/* Sponsor, Committee, and Date Info */}
+          {/* Sponsor, Committee, Date, and Location Info */}
           <div className="space-y-2 text-sm">
             {bill.primary_sponsor && (
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                <span className="font-medium">Rep. {bill.primary_sponsor.name}</span>
+                <div className="flex items-center gap-1">
+                  <Building className="w-3 h-3 text-blue-500" />
+                  <span className="text-xs text-blue-500">{getChamber(bill.bill_number || '')}</span>
+                </div>
+                <User className="w-3 h-3 text-gray-500" />
+                <span className="font-medium">{bill.primary_sponsor.name}</span>
               </div>
             )}
             
             {bill.committee && (
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                <FileText className="w-3 h-3 text-green-500" />
                 <span className="text-gray-600">{bill.committee}</span>
               </div>
             )}
             
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
               <span className="text-gray-600">
                 {bill.status_date ? new Date(bill.status_date).toLocaleDateString('en-US', {
                   month: '2-digit',
@@ -72,6 +83,13 @@ export const BillCard = ({ bill, onClick }: BillCardProps) => {
                 }) : 'No date'}
               </span>
             </div>
+
+            {bill.last_action && (
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3 h-3 text-purple-500" />
+                <span className="text-gray-600 text-xs">{bill.last_action}</span>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

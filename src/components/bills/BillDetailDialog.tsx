@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BillWithSponsor, SponsorWithPerson, History, Rollcall, VoteWithPerson } from "@/types/bills";
+import { User, FileText } from "lucide-react";
 
 interface BillDetailDialogProps {
   selectedBill: BillWithSponsor | null;
@@ -66,6 +67,20 @@ export const BillDetailDialog = ({
                   <h4 className="font-semibold mb-2">Last Action</h4>
                   <p className="text-sm">{selectedBill?.last_action}</p>
                 </div>
+              </div>
+              
+              {/* Sponsor and Bill Text buttons */}
+              <div className="flex gap-2 pt-4 border-t">
+                {billSponsors.length > 0 && (
+                  <Button variant="outline" size="sm">
+                    <User className="w-4 h-4 mr-2" />
+                    Sponsor Profile
+                  </Button>
+                )}
+                <Button variant="outline" size="sm">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Bill Text
+                </Button>
               </div>
             </TabsContent>
 

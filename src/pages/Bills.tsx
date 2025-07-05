@@ -44,7 +44,9 @@ const Bills = () => {
     }
 
     if (sponsorFilter && sponsorFilter !== "all") {
-      filtered = filtered.filter(bill => bill.primary_sponsor?.name === sponsorFilter);
+      filtered = filtered.filter(bill => 
+        bill.primary_sponsor?.name?.toLowerCase().trim() === sponsorFilter.toLowerCase().trim()
+      );
     }
 
     if (monthFilter && monthFilter !== "all") {
