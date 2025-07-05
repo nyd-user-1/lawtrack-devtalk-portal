@@ -42,8 +42,12 @@ export const BillDetailDialog = ({
   };
 
   const handleViewVotes = (rollCallId: number) => {
-    setActiveRollcallId(rollCallId);
-    onFetchVotes(rollCallId);
+    if (activeRollcallId === rollCallId) {
+      setActiveRollcallId(null);
+    } else {
+      setActiveRollcallId(rollCallId);
+      onFetchVotes(rollCallId);
+    }
   };
   return (
     <Dialog open={!!selectedBill} onOpenChange={onClose}>
@@ -127,7 +131,7 @@ export const BillDetailDialog = ({
               <div className="history-timeline space-y-6">
                 {billHistory.map((item, index) => (
                   <div key={index} className="relative border-l-2 border-gray-200 pl-6 pb-4">
-                    <div className="absolute -left-2 top-0 w-3 h-3 bg-gray-400 rounded-full"></div>
+                    <div className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full"></div>
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-medium">{item.action}</p>
